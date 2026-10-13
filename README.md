@@ -122,12 +122,33 @@ Conecte o Agente de IA do N8N a um modelo como Gemini ou GPT para:
 
 ## Entregáveis
 
-### MVP (Mínimo Viável)
+## Entregáveis
 
-- [ ] Repositório forkado com o workflow N8N implementado
-- [ ] Workflow N8N exportado (`n8n/workflow.json`) com mensagens estáticas
-- [ ] Script de RPA integrado ao Webhook do N8N
-- [ ] Print ou vídeo demonstrando o fluxo funcionando de ponta a ponta
+### MVP (Mínimo Viável)
+- [x] Repositório forkado com o workflow N8N implementado
+- [x] Workflow N8N exportado (`n8n/workflow.json`) com mensagens estáticas
+- [x] Script de RPA integrado ao Webhook do N8N (`src/extrair_clientes.ipynb`)
+- [x] Print ou vídeo demonstrando o fluxo funcionando de ponta a ponta
+
+---
+
+## 📸 Demonstração da Execução de Ponta a Ponta
+
+### 1. Extração RPA e Disparo para o Webhook (Google Colab)
+> O script em Python faz a raspagem da tabela HTML dos clientes e realiza o POST com sucesso (`Status 200`) para o Webhook do n8n.
+
+![Execução Colab](docs/evidencia-colab-rpa.png)
+
+### 2. Orquestração e Processamento dos Dados (n8n)
+> Fluxo completo executado com sucesso: recepção do Webhook, requisição do CSV de investimentos, tratamento via JavaScript, cruzamento dos dados e resposta HTTP.
+
+![Workflow n8n](docs/evidencia-workflow-n8n.png)
+
+### 3. Mensagens e Recomendações Personalizadas Geradas
+> Amostra do nó de saída com a mensagem gerada individualmente para cada cliente com base no saldo e no perfil de risco.
+
+![Saída n8n](docs/evidencia-saida-mensagens.png)
+
 
 ### Desafio Completo
 
