@@ -1,1 +1,174 @@
 
+{
+  "name": "Assistente investimento",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -1008,
+        -176
+      ],
+      "id": "155c3a55-6834-4eb4-90f1-dab65fd458f3",
+      "name": "Webhook",
+      "webhookId": "d691af77-dcff-49ea-9f46-f369cc792179"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        208,
+        -192
+      ],
+      "id": "9a95a72d-151f-4be1-be37-aff8a64c48cd",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -784,
+        -176
+      ],
+      "id": "13ca694b-07b2-4913-af48-239ec517a527",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvRaw = $json.data ?? $json.body ?? $json;\nconst text = (typeof csvRaw === \"string\") ? csvRaw : JSON.stringify(csvRaw);\n\nconst lines = text.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);\nconst headers = lines[0].split(\",\").map(h => h.trim());\n\nconst investimentos = lines.slice(1).map(line => {\n  const cols = line.split(\",\").map(c => c.trim());\n  const obj = {};\n  headers.forEach((h, i) => obj[h] = cols[i] ?? \"\");\n\n  // normaliza mínimo para número\n  obj.minimo = Number(String(obj.minimo).replace(/[^\\d]/g, \"\")) || 0;\n\n  return obj;\n});\n\nreturn [{ json: { investimentos } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -176
+      ],
+      "id": "7f843bfa-c2ec-404c-bdcb-d6535690941b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        -352
+      ],
+      "id": "ebbd23de-17a3-467e-98de-c3c3415a699f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recupera as duas entradas consolidadas pelo nó Merge ou nós anteriores\n// Se o Merge combinou os dados no item atual:\nconst inputData = $input.first().json;\n\n// Garante o acesso à lista de clientes e à lista de investimentos\nconst clientes = inputData.clientes ?? $(\"Webhook\").first().json.body.clientes ?? [];\nconst investimentos = inputData.investimentos ?? $(\"Code\").first().json.investimentos ?? [];\n\n// Função auxiliar para converter \"R$ 12.500,00\" em número real (12500.00)\nfunction limparSaldo(saldoStr) {\n  if (typeof saldoStr === \"number\") return saldoStr;\n  const limpo = String(saldoStr || \"\")\n    .replace(/[R$\\s]/g, \"\")\n    .replaceAll(\".\", \"\")\n    .replace(\",\", \".\");\n  return parseFloat(limpo) || 0;\n}\n\n// 2. Itera sobre cada cliente e cruza com a tabela de investimentos\nconst resultado = clientes.map(cliente => {\n  const saldoNumerico = limparSaldo(cliente.saldo);\n  \n  // Filtra os produtos correspondentes ao perfil do cliente cujo valor mínimo cabe no saldo\n  const produtosRecomendados = investimentos.filter(inv => {\n    const mesmoPerfil = String(inv.perfil).toLowerCase() === String(cliente.perfil).toLowerCase();\n    const cabeNoOrcamento = saldoNumerico >= Number(inv.minimo);\n    return mesmoPerfil && cabeNoOrcamento;\n  });\n\n  // Monta a lista formatada de recomendações para o texto\n  let listaProdutosTexto = \"\";\n  if (produtosRecomendados.length > 0) {\n    listaProdutosTexto = produtosRecomendados.map(p => \n      `• ${p.produto} (Mínimo: R$ ${p.minimo} | Rentabilidade: ${p.rentabilidade})`\n    ).join(\"\\n\");\n  } else {\n    listaProdutosTexto = \"• No momento, recomendamos manter em reserva de emergência diária.\";\n  }\n\n  // 3. Constrói o texto final da mensagem\n  const mensagem = `Olá, ${cliente.nome}!\\n\\n` +\n    `Identificamos que seu perfil de investidor é *${cliente.perfil}* e seu saldo disponível é de *${cliente.saldo}*.\\n\\n` +\n    `Com base nisso, selecionamos as melhores oportunidades para sua carteira:\\n` +\n    `${listaProdutosTexto}\\n\\n` +\n    `Bons investimentos!`;\n\n  return {\n    json: {\n      nome: cliente.nome,\n      email: cliente.email,\n      saldo: cliente.saldo,\n      saldoNumerico: saldoNumerico,\n      perfil: cliente.perfil,\n      produtosRecomendados: produtosRecomendados,\n      mensagem: mensagem\n    }\n  };\n});\n\nreturn resultado;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -352
+      ],
+      "id": "0027c3a3-3bf3-4120-9ea3-09802b25d4ce",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "62556b5e-53a6-4d00-a0e2-f784eedcb738",
+  "meta": {
+    "instanceId": "b5263ae1a717b669cde1ea59250c4dd4b0b8d51881cc45e19d1f92bf42091398"
+  },
+  "nodeGroups": [],
+  "id": "V97pTilrL32OEvMC",
+  "tags": []
+}
