@@ -150,14 +150,77 @@ Conecte o Agente de IA do N8N a um modelo como Gemini ou GPT para:
 ![Saída n8n](docs/evidencia-saida-mensagens.png)
 
 
-### Desafio Completo
+##  Desafio Completo
 
-- [ ] Todos os itens do MVP
-- [ ] Integração com Agente de IA no N8N
-- [ ] Mensagens geradas dinamicamente via LLM
-- [ ] Documentação explicando as decisões técnicas
+Esta etapa expande o MVP estático original para uma arquitetura totalmente dinâmica orientada a Inteligência Artificial e automação de ponta a ponta.
 
-## Estrutura do Repositório
+###  Arquitetura do Fluxo no n8n
+
+Abaixo está o pipeline completo implementado e validado em ambiente de execução:
+
+![Workflow n8n Completo](docs/evidencia-workflow-n8n-completo.png)
+
+---
+
+###  Requisitos Contemplados
+- [x] **Todos os itens do MVP:** Extração de clientes via Python/Colab, enriquecimento de produtos de investimento e orquestração via Webhook/Merge no n8n.
+- [x] **Integração com Agente de IA no n8n:** Orquestração com nó de LLM (GPT-4o) para contextualização individual.
+- [x] **Mensagens geradas dinamicamente via LLM:** Redação consultiva, humanizada e empática, gerando e-mails com assuntos únicos e conteúdos adaptados ao saldo e perfil de cada investidor.
+- [x] **Documentação técnica:** Detalhamento das decisões de arquitetura de dados, mitigação de alucinações e estratégia de validação de envio.
+
+---
+
+###  Decisões Técnicas e Arquitetura do Fluxo
+
+#### 1. Pré-processamento e Guardrails de Conteúdo (`Code in JavaScript2`)
+Antes de encaminhar os dados para a LLM, os registros de cada cliente passam por higienização estrita:
+- **Normalização Cambial:** Conversão resiliente de strings monetárias em formato brasileiro (`R$ 12.500,00`) para valores numéricos utilizáveis.
+- **Injeção de Regras de Copywriting (`copy_rules`):** Inclusão de metadados como tom (`"amigável e profissional"`), tamanho (`"curto (4-6 linhas)"`) e diretrizes de compliance financeiro (`evitar: ["promessas de ganho", "garantias", "linguagem agressiva"]`). Isso ancora a IA aos limites regulatórios das normas CVM/ANBIMA, eliminando riscos de alucinação de rentabilidade.
+
+#### 2. Geração Dinâmica via LLM (`Message a model`)
+O prompt utiliza as variáveis estruturadas de cada investidor para gerar uma comunicação personalizada e empática. Em vez de templates genéricos:
+- O primeiro nome do cliente e o saldo disponível são citados naturalmente no corpo da mensagem.
+- O ativo financeiro indicado respeita rigorosamente o aporte mínimo e o perfil de risco já calculados pela regra de negócio.
+- A resposta é forçada a retornar um contrato de dados JSON fechado com as chaves: `subject`, `text_body` e `html_body`.
+
+#### 3. Pós-processamento e Parsing Resiliente (`Code in JavaScript3`)
+- Extrai e decodifica o JSON retornado pela LLM a partir de `output[0].content[0].text`, removendo eventuais cascas de blocos markdown (````json ... ````).
+- Cruza a resposta gerada com os metadados de origem (`Code in JavaScript2`), garantindo que campos como e-mail de destino, nome completo e parâmetros de auditoria fiquem intactos.
+
+#### 4. Estratégia do Nó `If`: Validação e Roteamento de Testes (Sandbox)
+Uma decisão central de arquitetura foi a inserção do nó condicional `If` utilizando validação via Regex (`^[^\s@]+@[^\s@]+\.[^\s@]+$`):
+- **O Desafio:** A base de dados sintética de demonstração utiliza endereços fictícios (ex.: `ana@email.com`, `bruno@email.com`). Disparar envios diretos para esses destinatários acarretaria falhas imediatas de entrega (*delivery failure*), erros de conexão SMTP e bloqueios temporários de cota no Google Cloud / Gmail API.
+- **A Solução (Roteamento de Fallback/Sandbox):** O nó `If` foi configurado para avaliar a validade do endereço de destino. Para fins de homologação e validação prática da esteira:
+  - O fluxo desvia os disparos pela rota de tratamento de exceção/sandbox, substituindo o destinatário real por uma caixa de correio controlada de testes.
+  - Isso permitiu auditar o recebimento real dos **10 e-mails únicos**, comprovando que cada assunto, saudação e corpo gerados pela IA foram entregues com formatação rica (HTML) sem que nenhum erro de rede interrompesse a automação.
+
+---
+
+###  Evidências de Execução
+
+| Etapa | Evidência |
+| :--- | :--- |
+| **Normalização e Preparação de Dados** | `docs/evidencia-preparacao-dados.png` |
+| **Geração de Mensagens com IA (LLM)** | `docs/evidencia-llm-output.png` |
+| **Recebimento e Disparo Real no Gmail** | `docs/evidencia-envio-gmail.png` |
+
+> *A captura `docs/evidencia-envio-gmail.png` demonstra a chegada de todos os 10 e-mails na caixa de entrada de testes, cada qual com seu assunto personalizado e estrutura visual aprovada.*
+
+---
+
+## 📁 Estrutura do Repositório
+
+```text
+├── docs/
+│   ├── evidencia-preparacao-dados.png
+│   ├── evidencia-llm-output.png
+│   ├── evidencia-envio-gmail.png
+│   └── evidencia-workflow-n8n-completo.png
+├── n8n/
+│   └── workflow.json
+├── python/
+│   └── pipeline_extracao.py (ou notebook .ipynb)
+└── README.md
 
 ```
 📁 dio-lab-assistente-investimentos-rpa-n8n/
